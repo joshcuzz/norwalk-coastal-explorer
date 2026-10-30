@@ -1,0 +1,280 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Norwalk Coastal Flood Explorer</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/><style>
+:root{font-family:system-ui,-apple-system,sans-serif;color:#1d2939;background:#f6f8fa}*{box-sizing:border-box}body{margin:0}header{background:#102d49;color:white;padding:14px 24px}header h1{margin:0;font-size:22px}header p{margin:4px 0 0;color:#cfe0f1;font-size:13px}nav{display:flex;flex-wrap:wrap;background:white;border-bottom:1px solid #d5e0e9;padding:7px 20px;gap:6px}button{border:1px solid #d5dce4;background:#f9fbfd;border-radius:6px;padding:9px 12px;cursor:pointer}button.active{background:#155b87;color:white}section.tab{display:none}section.tab.active{display:block}.toolbar{display:flex;flex-wrap:wrap;gap:14px;padding:12px 20px;background:white;align-items:center}label{font-size:13px;font-weight:650}select{padding:8px;border:1px solid #c8d4df;border-radius:5px}.mainmap{height:calc(100vh - 264px);min-height:450px}.legend{padding:9px 20px;font-size:12px;background:white;border-top:1px solid #ddd}.notice{padding:9px 20px;background:#fff8e9;font-size:13px}.content{max-width:1050px;padding:22px;margin:auto;line-height:1.6}.embed{border:0;width:100%;height:calc(100vh - 158px);min-height:520px}.stat table{border-collapse:collapse;width:100%;font-size:14px}.stat th,.stat td{border-bottom:1px solid #d4dfe9;padding:8px;text-align:right}.stat th:first-child,.stat td:first-child{text-align:left}@media(max-width:750px){.mainmap{height:64vh}.toolbar{gap:8px}header{padding:10px 15px}}
+
+.nwlegend{background:rgba(255,255,255,.96);padding:11px 13px;border-radius:7px;
+ box-shadow:0 1px 9px #0004;font:12px/1.45 system-ui,sans-serif;max-width:225px}
+.nwlegend strong{display:block;font-size:13px;margin-bottom:5px}
+.nwitem{display:flex;align-items:center;gap:7px;margin:4px 0}
+.nwswatch{width:15px;height:13px;border:1px solid #0002;border-radius:2px;flex:none}
+.nwlegend small{display:block;margin-top:7px;color:#59677a}
+.nwpopup{font:13px/1.5 system-ui,sans-serif;min-width:175px}
+.nwpopup strong{font-size:14px}
+</style><script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
+<script>
+(()=>{
+proj4.defs('EPSG:26918','+proj=utm +zone=18 +datum=NAD83 +units=m +no_defs +type=crs');
+const oldFetch=window.fetch.bind(window); let metaPromise;
+const cache=new Map(); const order=[];
+async function imageData(url){
+ if(cache.has(url))return cache.get(url);
+ const blob=await (await oldFetch(url)).blob();
+ const bmp=await createImageBitmap(blob);
+ const canvas=document.createElement('canvas');canvas.width=bmp.width;canvas.height=bmp.height;
+ const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(bmp,0,0);
+ const data=ctx.getImageData(0,0,bmp.width,bmp.height);
+ bmp.close();const result={data,width:canvas.width,height:canvas.height};
+ cache.set(url,result);order.push(url);if(order.length>12)cache.delete(order.shift());return result;
+}
+async function lookup(url){
+ const u=new URL(url,location.href),scenario=u.searchParams.get('scenario');
+ if(!metaPromise)metaPromise=oldFetch('query/metadata.json').then(r=>r.json());
+ const metadata=(await metaPromise)[scenario];if(!metadata)throw Error('Unknown scenario');
+ const lat=Number(u.searchParams.get('lat')),lon=Number(u.searchParams.get('lon'));
+ if(!Number.isFinite(lat)||!Number.isFinite(lon))throw Error('Invalid coordinates');
+ const [x,y]=proj4('EPSG:4326',metadata.crs,[lon,lat]);
+ const [a,b,c,d,e,f]=metadata.transform;
+ const det=a*e-b*d,col=Math.floor((e*(x-c)-b*(y-f))/det),row=Math.floor((-d*(x-c)+a*(y-f))/det);
+ let result={status:'outside',scenario};
+ if(row>=0&&col>=0&&row<metadata.height&&col<metadata.width){
+   const chunk=metadata.chunk,url2=`query/${encodeURIComponent(scenario)}/${Math.floor(row/chunk)}_${Math.floor(col/chunk)}.png`;
+   const im=await imageData(url2),ix=col%chunk,iy=row%chunk,k=4*(iy*im.width+ix);
+   const n=(im.data.data[k]<<16)|(im.data.data[k+1]<<8)|im.data.data[k+2];
+   result=n===0?{status:'nodata',scenario}:{status:'ok',scenario,row,col,pixel_m:2,lat,lon,value:scenario.startsWith('msl-')?(n-8000000)/1000:Math.round((n-8000000)/1000)};
+ }
+ return result;
+}
+window.nwLookup=lookup;
+window.fetch=(input,opts)=>{
+ const u=typeof input==='string'?input:(input instanceof URL?input.toString():input.url);
+ if(typeof u==='string'&&u.startsWith('/api/query?'))
+   return lookup(u).then(d=>new Response(JSON.stringify(d),{status:200,headers:{'Content-Type':'application/json'}}));
+ return oldFetch(input,opts);
+};
+})();
+</script>
+</head><body><header><h1>Norwalk Coastal Flood Explorer</h1><p>Research simulations · 2024 tides with 2024, 2050, and 2100 relative sea levels</p></header><nav><button class="active" data-tab="tidal">Tidal Flooding</button><button data-tab="storms">Storm Flooding</button><button data-tab="future">Future Sea Level</button><button data-tab="about">About</button></nav>
+<section id="tidal" class="tab active"><div class="toolbar"><label>Sea-level scenario <select id="tidalScenario"><option>2024</option><option>2050</option><option>2100</option></select></label><label>Map display <select id="tidalMode"><option value="coastal">Coastal flooding only (hide ≥348 days)</option><option value="all">Include nearly permanently submerged areas</option><option value="developed">Developed-classified land only</option></select></label></div><div id="tidalMap" class="mainmap"></div><div id="tidalLegend" class="legend"></div></section>
+<section id="storms" class="tab"><p style="padding:9px 16px"><a href="storm_100yr.html" target="_blank" rel="noopener">View synthetic 100-year baseline inundation map (provisional)</a></p><div class="toolbar"><label>Event <select id="event"><option value="sandy">Hurricane Sandy (2012)</option><option value="10">1-in-10-year coastal flood (not simulated)</option><option value="100">1-in-100-year coastal flood (not simulated)</option></select></label><label>Sea-level case <select id="stormScenario"><option>Historical</option><option>2050</option><option>2100</option></select></label></div><div id="stormDisplay"><iframe class="embed" data-src="sandy_v3_maxdepth_inspect_domain.html" title="Historical Sandy flood depth"></iframe></div></section>
+<section id="future" class="tab"><div class="toolbar"><label>Additional flood days vs 2024 <select id="futureScenario"><option value="2050-2024">2050 minus 2024</option><option value="2100-2024">2100 minus 2024</option></select></label><label>Display <select id="futureMode"><option value="all">All modeled locations</option><option value="developed">Developed-classified land only</option></select></label></div><div id="futureMap" class="mainmap"></div><div class="legend">Negative change · purple &nbsp; | &nbsp; +1–5 days · cyan &nbsp; | &nbsp; +6–20 · blue &nbsp; | &nbsp; +21–60 · violet &nbsp; | &nbsp; +61–150 · magenta &nbsp; | &nbsp; +151+ · red</div></section>
+<section id="about" class="tab"><div class="content"><h2>What these maps show</h2><p>The annual tidal maps depict the number of UTC calendar days during which a 2 m terrain pixel exceeds 5 cm modeled water depth, conditioned on the corresponding 20 m SFINCS cell being hydraulically wet. A day counts if at least one hourly snapshot meets that threshold.</p><p>The 2050 and 2100 experiments apply JPL relative sea-level increments of +0.197504 m and +0.643954 m to the same 2024 tidal forcing. Geometry and 2021 C-CAP land-cover classification are held fixed. These are controlled sea-level sensitivity experiments, not predictions of future weather or storm frequency.</p><p>The flood-day difference maps subtract the 2024 annual counts from the future-scenario counts. Negative differences, if present, are shown separately. The 348-day display exclusion is a visualization filter, not a hydrodynamic correction; retained water and connectivity require further QA.</p><p>The map uses 10 m approximate-resolution image previews for web performance. Scientific analysis uses the accompanying full-resolution 2 m GeoTIFFs. Map click values are sampled from the original 2 m scientific raster; preview positioning on a web tile basemap is approximate; use the original geo-referenced TIFFs for accurate location-by-location scientific analysis.</p><p><strong>Storm flooding:</strong> Historical Sandy replay is available where the existing map is installed. The 1-in-10-year and 1-in-100-year events and future Sandy replays have not been simulated. They require separately justified extreme-water-level/tide/storm forcing and event simulations. A 100-year return period applies to a specified baseline distribution, not automatically to its sea-level-shifted future counterpart.</p><p>Methods: SFINCS 20 m hydraulics; original 2 m topobathymetry; C-CAP classes 2/3/4 considered developed. The regional sea-level forcing and model assumptions should be documented in a full technical methods note before public release.</p><p><strong>Future Sea Level:</strong> Ocean-connected below-mean-water inundation is estimated from fixed 2 m terrain using an explicitly specified 2024 MHHW elevation in NAVD88. This static calculation does not simulate tides, drainage, defenses, waves, or geomorphic evolution. Sea-level offsets are from JPL RCP8.5 member 01, not an ensemble mean. The shoreline position is indicative, not a forecast.</p><div class="stat" id="stats"></div></div></section>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>
+const bounds=[[41.037659752530075, -73.46944031988689], [41.14222508719307, -73.34174474933786]],layers={"2024|coastal": "scenario_maps_v1/2024_coastal.png", "2024|all": "scenario_maps_v1/2024_all.png", "2024|developed": "scenario_maps_v1/2024_developed.png", "2050|coastal": "scenario_maps_v1/2050_coastal.png", "2050|all": "scenario_maps_v1/2050_all.png", "2050|developed": "scenario_maps_v1/2050_developed.png", "2100|coastal": "scenario_maps_v1/2100_coastal.png", "2100|all": "scenario_maps_v1/2100_all.png", "2100|developed": "scenario_maps_v1/2100_developed.png", "2050-2024|all": "scenario_maps_v1/2050_minus_2024_all.png", "2050-2024|developed": "scenario_maps_v1/2050_minus_2024_developed.png", "2100-2024|all": "scenario_maps_v1/2100_minus_2024_all.png", "2100-2024|developed": "scenario_maps_v1/2100_minus_2024_developed.png"},statistics={"scenarios": {"2024": {"valid": 5522100, "any": 357503, "1-10": 77221, "11-30": 11307, "31-100": 28740, "101-347": 47617, "348-366": 192618, "sum_days": 82459814, "mean_days": 14.933}, "2050": {"valid": 5522100, "any": 467475, "1-10": 138074, "11-30": 22143, "31-100": 23951, "101-347": 58961, "348-366": 224346, "sum_days": 97718804, "mean_days": 17.696}, "2100": {"valid": 5522100, "any": 829941, "1-10": 251185, "11-30": 70111, "31-100": 95693, "101-347": 70244, "348-366": 342708, "sum_days": 146429766, "mean_days": 26.517}}, "differences": {"2050-2024": {"valid": 5522100, "increase": 308011, "decrease": 1, "unchanged": 5214088, "mean_change_sum": 15258990, "mean_change": 2.763}, "2100-2024": {"valid": 5522100, "increase": 681357, "decrease": 0, "unchanged": 4840743, "mean_change_sum": 63969952, "mean_change": 11.584}}};
+function makeMap(id){let m=L.map(id,{preferCanvas:true});let streets=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'});let satellite=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Esri World Imagery'});satellite.addTo(m);L.control.layers({'Satellite':satellite,'Street map':streets}).addTo(m);m.fitBounds(bounds);return m;}
+const tidalMap=makeMap('tidalMap'),futureMap=makeMap('futureMap');let tidalOverlay=null,futureOverlay=null;
+function drawTidal(){const scenario=document.getElementById('tidalScenario').value,mode=document.getElementById('tidalMode').value;if(tidalOverlay)tidalMap.removeLayer(tidalOverlay);tidalOverlay=L.imageOverlay(layers[scenario+'|'+mode],bounds,{opacity:.86,interactive:false}).addTo(tidalMap);document.getElementById('tidalLegend').innerHTML='<strong>'+scenario+' annual flood days</strong> · 1–10 days · pale blue &nbsp; | &nbsp; 11–30 · blue &nbsp; | &nbsp; 31–100 · dark blue &nbsp; | &nbsp; 101–200 · purple &nbsp; | &nbsp; 201–347 · magenta &nbsp; | &nbsp; 348–366 · dark red';}
+function drawFuture(){const s=document.getElementById('futureScenario').value,mode=document.getElementById('futureMode').value;if(futureOverlay)futureMap.removeLayer(futureOverlay);futureOverlay=L.imageOverlay(layers[s+'|'+mode],bounds,{opacity:.86,interactive:false}).addTo(futureMap);}
+function storm(){
+ const e=document.getElementById('event').value,s=document.getElementById('stormScenario').value;
+ const panel=document.getElementById('stormDisplay');
+ let iframe=document.getElementById('nwSandyIframe');
+ if(!iframe){
+   const old=panel.querySelector('iframe');
+   if(old){old.id='nwSandyIframe';iframe=old;}
+ }
+ if(e==='sandy'&&s==='Historical'){
+   if(!iframe){panel.innerHTML='<p>Existing Sandy viewer not found.</p>';return;}
+   iframe.style.display='block';
+   const pending=iframe.getAttribute('data-src');
+   if(pending){iframe.removeAttribute('data-src');iframe.src=pending;}
+   const notice=panel.querySelector('.nwUnavailable');if(notice)notice.remove();
+ }else{
+   if(iframe)iframe.style.display='none';
+   let notice=panel.querySelector('.nwUnavailable');
+   if(!notice){notice=document.createElement('div');notice.className='content nwUnavailable';panel.appendChild(notice);}
+   notice.innerHTML='<h2>Simulation not yet available</h2><p>This event and sea-level combination has not been simulated. No synthetic flood-depth map or unsupported return period is shown.</p>';
+ }
+}
+function showTab(tab){document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.id===tab));document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.tab===tab));if(tab==='tidal')setTimeout(()=>tidalMap.invalidateSize(),50);if(tab==='future')setTimeout(()=>{futureMap.invalidateSize({pan:false});futureMap.fitBounds(bounds);},150);if(tab==='storms')setTimeout(storm,40);}
+document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));['tidalScenario','tidalMode'].forEach(k=>document.getElementById(k).addEventListener('change',()=>drawTidal()));['futureScenario','futureMode'].forEach(k=>document.getElementById(k).addEventListener('change',()=>drawFuture()));['event','stormScenario'].forEach(k=>document.getElementById(k).addEventListener('change',storm));
+const t=document.createElement('table');t.innerHTML='<tr><th>Scenario</th><th>Mean flood days per developed pixel</th><th>Developed area with ≥1 flood day (km²)</th><th>Developed area with 31–100 flood days (km²)</th></tr>'+Object.entries(statistics.scenarios).map(([year,s])=>'<tr><td>'+year+'</td><td>'+s.mean_days+'</td><td>'+(s.any*4/1e6).toFixed(3)+'</td><td>'+(s['31-100']*4/1e6).toFixed(3)+'</td></tr>').join('');document.getElementById('stats').appendChild(t);
+
+// On-map legends, 10m preview click inspection, and 60% opacity outside active SFINCS domain.
+const nwlayers={
+  '2024':'scenario_maps_v2/2024_lookup.png',
+  '2050':'scenario_maps_v2/2050_lookup.png',
+  '2100':'scenario_maps_v2/2100_lookup.png',
+  '2050-2024':'scenario_maps_v2/2050_minus_2024_lookup.png',
+  '2100-2024':'scenario_maps_v2/2100_minus_2024_lookup.png'
+};
+const nwcache={};
+Object.entries(nwlayers).forEach(([k,src])=>{
+  const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=im.naturalWidth;c.height=im.naturalHeight;
+    const ctx=c.getContext('2d',{willReadFrequently:true});ctx.drawImage(im,0,0);
+    nwcache[k]={ctx,w:c.width,h:c.height};};
+  im.onerror=()=>console.warn('Lookup image could not load:',src);
+  im.src=src;
+});
+const nwDayItems=[['#6dd6ea','1–10 days'],['#22a0d8','11–30 days'],['#2865cb','31–100 days'],['#713dba','101–200 days'],['#ca2e70','201–347 days'],['#862632','348–366 days']];
+const nwChangeItems=[['#6b48a0','Decrease'],['#5acfd6','+1–5 days'],['#1b8bcf','+6–20 days'],['#524abe','+21–60 days'],['#d33770','+61–150 days'],['#a32331','+151+ days']];
+function makeNWLegend(map,kind){
+ const c=L.control({position:'bottomright'});
+ c.onAdd=()=>{const div=L.DomUtil.create('div','nwlegend');div.innerHTML='<strong>'+(kind==='days'?'Annual flood days':'Additional flood days')+'</strong>'+ (kind==='days'?nwDayItems:nwChangeItems).map(([color,name])=>'<div class="nwitem"><span class="nwswatch" style="background:'+color+'"></span><span>'+name+'</span></div>').join('')+'<small>Click map to inspect the original 2 m GeoTIFF</small>';
+ L.DomEvent.disableClickPropagation(div);return div;};c.addTo(map);
+}
+makeNWLegend(tidalMap,'days');
+function queryNW(map,latlng,key){
+ const data=nwcache[key];
+ if(!data)return 'Lookup is still loading. Try again in a moment.';
+ const south=bounds[0][0],west=bounds[0][1],north=bounds[1][0],east=bounds[1][1];
+ const x=Math.floor((latlng.lng-west)/(east-west)*data.w);
+ const y=Math.floor((north-latlng.lat)/(north-south)*data.h);
+ if(x<0||y<0||x>=data.w||y>=data.h)return 'Outside the mapped extent.';
+ const rgba=data.ctx.getImageData(x,y,1,1).data;
+ if(rgba[3]===0)return 'No modeled value at this location.';
+ let value=rgba[0]+rgba[1]*256;
+ if(key.includes('-'))value-=32768;
+ return key.includes('-')?('<strong>'+ (value>=0?'+':'')+value+' flood days</strong><div>'+key.replace('-',' minus ')+'</div>'):
+  ('<strong>'+value+' days per year</strong><div>'+key+' relative sea level · 2024 tides</div>');
+}
+function nwClick(map,event,key){
+ const result=queryNW(map,event.latlng,key);
+ L.popup().setLatLng(event.latlng).setContent('<div class="nwpopup">'+result+'<small style="display:block;margin-top:5px">Approximate displayed value; use the georeferenced 2 m GeoTIFF for scientific point extraction.</small></div>').openOn(map);
+}
+
+
+// GeoJSON generated for the original Norwalk domain-focus viewer.
+// This outer rectangle with polygon holes shades ONLY outside the active model footprint.
+async function nwDomainDim(map){
+ try{
+  const response=await fetch('norwalk_model_domain_mask.geojson');
+  if(!response.ok)throw Error('HTTP '+response.status);
+  const geo=await response.json();
+  const polys=[];
+  function walk(geom){
+   if(!geom)return;
+   if(geom.type==='Polygon')polys.push(geom.coordinates);
+   else if(geom.type==='MultiPolygon')geom.coordinates.forEach(p=>polys.push(p));
+   else if(geom.type==='GeometryCollection')geom.geometries.forEach(walk);
+  }
+  if(geo.type==='FeatureCollection')geo.features.forEach(f=>walk(f.geometry));
+  else if(geo.type==='Feature')walk(geo.geometry);
+  else walk(geo);
+  if(!polys.length)throw Error('No polygon geometry in domain file');
+  const outer=[[-85,-179.9],[-85,179.9],[85,179.9],[85,-179.9]];
+  const holes=polys.map(p=>p[0].map(v=>[v[1],v[0]]));
+  const mask=L.polygon([outer,...holes],{stroke:false,fillColor:'#ffffff',fillOpacity:0.60,interactive:false,fillRule:'evenodd'}).addTo(map);
+  mask.bringToFront();
+ }catch(e){console.warn('Outside-domain shading unavailable:',e);}
+}
+nwDomainDim(tidalMap);nwDomainDim(futureMap);
+
+drawTidal();drawFuture();
+
+// v3 exact 2m GeoTIFF tiles and point sampling, served by norwalk_native_tile_server.py.
+let tidalNative=null, futureNative=null;
+const oldDrawTidal=drawTidal, oldDrawFuture=drawFuture;
+const nativeTile=(scenario,mode)=>L.tileLayer(
+  'tiles/'+encodeURIComponent(scenario)+'/'+encodeURIComponent(mode)+'/{z}/{x}/{y}.png',
+  {tileSize:256,maxZoom:20,maxNativeZoom:16,opacity:1,updateWhenIdle:true,keepBuffer:2,
+   attribution:'Norwalk SFINCS · native 2 m terrain classifications'});
+function drawTidalNative(){
+  const s=document.getElementById('tidalScenario').value;
+  const mode=document.getElementById('tidalMode').value;
+  if(tidalOverlay){tidalMap.removeLayer(tidalOverlay);tidalOverlay=null;}
+  if(tidalNative)tidalMap.removeLayer(tidalNative);
+  tidalNative=nativeTile(s,mode).addTo(tidalMap);
+  document.getElementById('tidalLegend').innerHTML='<strong>'+s+' annual flood days</strong> · Native 2 m data · 2024 tides';
+}
+function drawFutureNative(){
+  const s=document.getElementById('futureScenario').value;
+  const mode=document.getElementById('futureMode').value;
+  if(futureOverlay){futureMap.removeLayer(futureOverlay);futureOverlay=null;}
+  if(futureNative)futureMap.removeLayer(futureNative);
+  futureNative=nativeTile(s,mode).addTo(futureMap);
+}
+// Keep original dropdown event listeners but make their original draw functions dispatch native tiles.
+drawTidal=drawTidalNative;
+drawFuture=drawFutureNative;
+// Old overlays have already been created by the initial v2 script call.
+drawTidal();drawFuture();
+async function readOriginal(map,ev,scenario){
+  const ll=ev.latlng;
+  const popup=L.popup().setLatLng(ll).setContent('Reading original 2 m raster…').openOn(map);
+  try{
+    const url='/api/query?scenario='+encodeURIComponent(scenario)+'&lat='+encodeURIComponent(ll.lat)+'&lon='+encodeURIComponent(ll.lng);
+    const response=await fetch(url,{cache:'no-store'});
+    if(!response.ok)throw Error('HTTP '+response.status);
+    const data=await response.json();
+    let body;
+    if(data.status==='outside')body='Outside the 2 m terrain raster.';
+    else if(data.status==='nodata')body='No modeled value at this location.';
+    else {
+      let val=data.value;
+      const diff=scenario.includes('-');
+      body='<strong>'+ (diff?(val>0?'+':'')+val+' additional flood days':val+' flood days per year')+'</strong>'+
+           '<div>'+scenario.replace('-',' minus ')+' sea-level comparison · 2024 tides</div>'+
+           '<small>Exact original 2 m GeoTIFF cell (row '+data.row+', column '+data.col+')</small>';
+    }
+    if(map.hasLayer(tidalNative)||map===futureMap)popup.setContent('<div class="nwpopup">'+body+'</div>');
+  }catch(e){popup.setContent('Point lookup failed: '+e.message+'. Is the 2 m map server running?');}
+}
+tidalMap.on('click',ev=>readOriginal(tidalMap,ev,document.getElementById('tidalScenario').value));
+futureMap.on('click',ev=>readOriginal(futureMap,ev,document.getElementById('futureScenario').value));
+
+
+// v4 static MHHW inundation: separate layer, never stack over difference images.
+(function(){
+ const section=document.getElementById('future');
+ const oldToolbar=section.querySelector('.toolbar');
+ oldToolbar.style.display='none';
+ const bar=document.createElement('div');bar.className='toolbar';
+ bar.innerHTML='<label>MHHW scenario <select id="mslScenario"><option value="2024">2024 baseline</option><option value="2050">2050 (+19.8 cm)</option><option value="2100">2100 (+64.4 cm)</option></select></label>'+
+ '<label>Show <select id="mslMode"><option value="new">Newly inundated land (vs. 2024 MHHW)</option><option value="all">All ocean-connected inundation</option><option value="developed">Developed-classified land only</option></select></label>';
+ section.insertBefore(bar,document.getElementById('futureMap'));
+ const note=document.createElement('div');note.className='notice';
+ note.textContent='JPL RCP8.5 (member 01) | Historical South Norwalk MHHW: +1.124 m NAVD88. Future sea-level rise: +19.8 cm (2050), +64.4 cm (2100). Static ocean-connected inundation; historical tidal datum not adjusted to 2024.';
+ section.insertBefore(note,document.getElementById('futureMap'));
+ const legend=section.querySelector('.legend');
+ if(legend)legend.textContent='Potential MHHW inundation depth (feet): 0–0.5 ft · light cyan | 0.5–1.0 ft · cyan | 1.0–2.0 ft · blue | 2.0–3.3 ft · dark blue | 3.3–6.6 ft · violet | >6.6 ft · purple. Zero and disconnected areas are transparent.';
+ const oldFutureClick=()=>{};
+ futureMap.off('click');
+ let mslLayer=null;
+ function redrawMSL(){
+   if(futureOverlay){futureMap.removeLayer(futureOverlay);futureOverlay=null;}
+   if(futureNative){futureMap.removeLayer(futureNative);futureNative=null;}
+   if(mslLayer){futureMap.removeLayer(mslLayer);mslLayer=null;}
+   const key='msl-'+document.getElementById('mslScenario').value;
+   const mode=document.getElementById('mslMode').value;
+   mslLayer=L.tileLayer('tiles/'+key+'/'+mode+'/{z}/{x}/{y}.png',
+     {tileSize:256,maxZoom:20,maxNativeZoom:16,opacity:1,updateWhenIdle:true,keepBuffer:2,
+      attribution:'2 m DEM · ocean-connected mean-water inundation'}).addTo(futureMap);
+ }
+ document.getElementById('mslScenario').addEventListener('change',redrawMSL);
+ document.getElementById('mslMode').addEventListener('change',redrawMSL);
+ futureMap.on('click',async e=>{
+   const lat=e.latlng.lat,lon=e.latlng.lng,year=document.getElementById('mslScenario').value;
+   const popup=L.popup().setLatLng(e.latlng).setContent('Reading 2 m terrain cell…').openOn(futureMap);
+   try{
+     const res=await fetch('/api/query?scenario=msl-'+year+'&lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon),{cache:'no-store'});
+     if(!res.ok)throw Error('HTTP '+res.status);
+     const d=await res.json();
+     popup.setContent(d.status==='ok'?('<strong>'+ (d.value>0?((d.value*3.28084).toFixed(2)+' ft potential MHHW inundation depth'):'Not ocean-connected below the selected MHHW level')+'</strong><div>'+year+' · static shoreline sensitivity</div><small>Native 2 m terrain cell · row '+d.row+', column '+d.col+'</small>')
+       :'Outside valid model terrain / no value');
+   }catch(err){popup.setContent('Query failed: '+err.message);}
+ });
+ redrawMSL();
+})();
+
+
+// v5: historical MHHW display, with new-land footprint selected by default.
+(function(){
+ const selector=document.getElementById('mslScenario');
+ const mode=document.getElementById('mslMode');
+ if(!selector||!mode)return;
+ const legend=L.control({position:'bottomright'});
+ legend.onAdd=()=>{
+   const div=L.DomUtil.create('div','nwlegend');
+   div.innerHTML='<strong>Potential MHHW inundation depth</strong>'+
+      [['#79d7f1','0–0.5 ft'],['#42ade2','0.5–1.0 ft'],
+       ['#167bc7','1.0–2.0 ft'],['#2454a8','2.0–3.3 ft'],
+       ['#5b3892','3.3–6.6 ft'],['#411e6b','More than 6.6 ft']]
+       .map(([c,t])=>'<div class="nwitem"><span class="nwswatch" style="background:'+c+'"></span><span>'+t+'</span></div>').join('')+
+       '<small>Only areas connected to the ocean. For “newly inundated,” existing 2024 MHHW water is hidden. Click for native 2 m depth.</small>';
+   L.DomEvent.disableClickPropagation(div);return div;
+ };
+ legend.addTo(futureMap);
+ selector.value='2100';mode.value='new';
+ mode.dispatchEvent(new Event('change'));
+})();
+
+</script></body></html>

@@ -1,0 +1,15 @@
+<!doctype html><html><head><meta charset='utf-8'><title>Norwalk synthetic 100-year baseline</title>
+<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'><style>html,body,#map{height:100%;margin:0}#info{position:absolute;z-index:1000;background:white;top:14px;left:60px;max-width:360px;padding:13px;border-radius:8px;font:13px Arial;box-shadow:0 1px 12px #0004;line-height:1.6}</style></head>
+<body><div id='map'></div><div id='info'><b>Norwalk synthetic 100-year coastal flood</b><div>Baseline sea level · provisional Bridgeport-derived peak +2.724 m NAVD88</div><div>0.05–0.3 m · cyan | 0.3–0.6 m · blue | 0.6–1 m · dark blue | 1–2 m · violet | 2–3 m · pink | >3 m · red</div><div>Maximum modeled depth on 2 m terrain · click for depth in feet.</div><small>This is a synthetic storm analogue, not a validated local return-period flood map.</small><div><a href='index.html'>Back to Explorer</a></div></div>
+<script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script><script src='https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js'></script>
+<script>proj4.defs('EPSG:26918','+proj=utm +zone=18 +datum=NAD83 +units=m +no_defs');const bounds=[[41.03764508719307, -73.46944031988689], [41.14222508719307, -73.34173631988689]];
+const map=L.map('map');L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:20,attribution:'Esri'}).addTo(map);L.imageOverlay('storm_100yr.png',bounds,{opacity:.8}).addTo(map);map.fitBounds(bounds);
+let meta;const images={};map.on('click',async ev=>{try{if(!meta)meta=(await(await fetch('query/metadata.json')).json()).storm100;
+const [x,y]=proj4('EPSG:4326',meta.crs,[ev.latlng.lng,ev.latlng.lat]),[a,b,c,d,e,f]=meta.transform,det=a*e-b*d;
+const col=Math.floor((e*(x-c)-b*(y-f))/det),row=Math.floor((-d*(x-c)+a*(y-f))/det);
+if(row<0||col<0||row>=meta.height||col>=meta.width){L.popup().setLatLng(ev.latlng).setContent('Outside modeled domain').openOn(map);return;}
+const name=`query/storm100/${Math.floor(row/512)}_${Math.floor(col/512)}.png`;
+let im=images[name];if(!im){const bmp=await createImageBitmap(await(await fetch(name)).blob());let canvas=document.createElement('canvas');canvas.width=bmp.width;canvas.height=bmp.height;const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(bmp,0,0);im={pixels:ctx.getImageData(0,0,bmp.width,bmp.height),width:bmp.width};images[name]=im;bmp.close();}
+const k=4*((row%512)*im.width+(col%512)),p=im.pixels.data,n=(p[k]<<16)|(p[k+1]<<8)|p[k+2],depth=(n-8000000)/1000;
+L.popup().setLatLng(ev.latlng).setContent(n===0?'No modeled depth here':(depth>=.05?`<b>${(depth*3.28084).toFixed(2)} ft</b> maximum flood depth`:'Less than 5 cm modeled flood depth')).openOn(map);
+}catch(err){L.popup().setLatLng(ev.latlng).setContent('Lookup error: '+err.message).openOn(map);}});</script></body></html>
