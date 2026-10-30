@@ -158,5 +158,38 @@ map.on("click",e=>{
 });
 </script>
 <script src="norwalk_domain_focus.js"></script>
+
+<script>
+// NORWALK_SANDY_PRESERVE_VIEW
+(function(){
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get('view');
+
+  if (raw) {
+    try {
+      const v = JSON.parse(raw);
+      if (Number.isFinite(v.lat) && Number.isFinite(v.lng) &&
+          Number.isFinite(v.zoom)) {
+        map.setView([v.lat, v.lng], v.zoom, {animate:false});
+      }
+    } catch(e) {
+      console.warn('Could not restore Sandy map view', e);
+    }
+  }
+
+  function reportView(){
+    if (window.parent === window) return;
+    const c = map.getCenter();
+    window.parent.postMessage({
+      type:'nw-sandy-view',
+      view:{lat:c.lat,lng:c.lng,zoom:map.getZoom()}
+    }, window.location.origin);
+  }
+
+  map.on('moveend zoomend', reportView);
+  reportView();
+})();
+</script>
+
 </body>
 </html>

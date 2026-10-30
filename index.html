@@ -53,8 +53,13 @@ window.fetch=(input,opts)=>{
 })();
 </script>
 </head><body><header><h1>Norwalk Coastal Flood Explorer</h1><p>Research simulations · 2024 tides with 2024, 2050, and 2100 relative sea levels</p></header><nav><button class="active" data-tab="tidal">Tidal Flooding</button><button data-tab="storms">Storm Flooding</button><button data-tab="future">Future Sea Level</button><button data-tab="about">About</button></nav>
-<section id="tidal" class="tab active"><div class="toolbar"><label>Sea-level scenario <select id="tidalScenario"><option>2024</option><option>2050</option><option>2100</option></select></label><label>Map display <select id="tidalMode"><option value="coastal">Coastal flooding only (hide ≥348 days)</option><option value="all">Include nearly permanently submerged areas</option><option value="developed">Developed-classified land only</option></select></label></div><div id="tidalMap" class="mainmap"></div><div id="tidalLegend" class="legend"></div></section>
-<section id="storms" class="tab"><p style="padding:9px 16px"><a href="storm_100yr.html" target="_blank" rel="noopener">View synthetic 100-year baseline inundation map (provisional)</a></p><div class="toolbar"><label>Event <select id="event"><option value="sandy">Hurricane Sandy (2012)</option><option value="10">1-in-10-year coastal flood (not simulated)</option><option value="100">1-in-100-year coastal flood (not simulated)</option></select></label><label>Sea-level case <select id="stormScenario"><option>Historical</option><option>2050</option><option>2100</option></select></label></div><div id="stormDisplay"><iframe class="embed" data-src="sandy_v3_maxdepth_inspect_domain.html" title="Historical Sandy flood depth"></iframe></div></section>
+<section id="tidal" class="tab active"><div class="toolbar"><label>Sea-level scenario <select id="tidalScenario"><option>2024</option><option>2050</option><option>2100</option></select></label><label>Map display <select id="tidalMode"><option value="coastal" selected>Coastal flooding only (hide ≥348 days)</option><option value="all">Include nearly permanently submerged areas</option><option value="developed">Developed-classified land only</option></select></label></div><div id="tidalMap" class="mainmap"></div><div id="tidalLegend" class="legend"></div></section>
+<section id="storms" class="tab"><p style="padding:9px 16px"><a href="storm_100yr.html" target="_blank" rel="noopener">View synthetic 100-year baseline inundation map (provisional)</a></p><div class="toolbar"><label>Event <select id="event"><option value="sandy">Hurricane Sandy (2012)</option><option value="10">1-in-10-year coastal flood (not simulated)</option><option value="100">1-in-100-year coastal flood (not simulated)</option></select></label><label>Sea-level case <select id="stormScenario">
+<option value="Historical">Historical Sandy (2012)</option>
+<option value="2050">2050</option>
+<option value="2075">2075</option>
+<option value="2100">2100</option>
+</select></label></div><div id="stormDisplay"><iframe class="embed" data-src="sandy_v3_maxdepth_inspect_domain.html" title="Historical Sandy flood depth"></iframe></div></section>
 <section id="future" class="tab"><div class="toolbar"><label>Additional flood days vs 2024 <select id="futureScenario"><option value="2050-2024">2050 minus 2024</option><option value="2100-2024">2100 minus 2024</option></select></label><label>Display <select id="futureMode"><option value="all">All modeled locations</option><option value="developed">Developed-classified land only</option></select></label></div><div id="futureMap" class="mainmap"></div><div class="legend">Negative change · purple &nbsp; | &nbsp; +1–5 days · cyan &nbsp; | &nbsp; +6–20 · blue &nbsp; | &nbsp; +21–60 · violet &nbsp; | &nbsp; +61–150 · magenta &nbsp; | &nbsp; +151+ · red</div></section>
 <section id="about" class="tab"><div class="content"><h2>What these maps show</h2><p>The annual tidal maps depict the number of UTC calendar days during which a 2 m terrain pixel exceeds 5 cm modeled water depth, conditioned on the corresponding 20 m SFINCS cell being hydraulically wet. A day counts if at least one hourly snapshot meets that threshold.</p><p>The 2050 and 2100 experiments apply JPL relative sea-level increments of +0.197504 m and +0.643954 m to the same 2024 tidal forcing. Geometry and 2021 C-CAP land-cover classification are held fixed. These are controlled sea-level sensitivity experiments, not predictions of future weather or storm frequency.</p><p>The flood-day difference maps subtract the 2024 annual counts from the future-scenario counts. Negative differences, if present, are shown separately. The 348-day display exclusion is a visualization filter, not a hydrodynamic correction; retained water and connectivity require further QA.</p><p>The map uses 10 m approximate-resolution image previews for web performance. Scientific analysis uses the accompanying full-resolution 2 m GeoTIFFs. Map click values are sampled from the original 2 m scientific raster; preview positioning on a web tile basemap is approximate; use the original geo-referenced TIFFs for accurate location-by-location scientific analysis.</p><p><strong>Storm flooding:</strong> Historical Sandy replay is available where the existing map is installed. The 1-in-10-year and 1-in-100-year events and future Sandy replays have not been simulated. They require separately justified extreme-water-level/tide/storm forcing and event simulations. A 100-year return period applies to a specified baseline distribution, not automatically to its sea-level-shifted future counterpart.</p><p>Methods: SFINCS 20 m hydraulics; original 2 m topobathymetry; C-CAP classes 2/3/4 considered developed. The regional sea-level forcing and model assumptions should be documented in a full technical methods note before public release.</p><p><strong>Future Sea Level:</strong> Ocean-connected below-mean-water inundation is estimated from fixed 2 m terrain using an explicitly specified 2024 MHHW elevation in NAVD88. This static calculation does not simulate tides, drainage, defenses, waves, or geomorphic evolution. Sea-level offsets are from JPL RCP8.5 member 01, not an ensemble mean. The shoreline position is indicative, not a forecast.</p><div class="stat" id="stats"></div></div></section>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>
@@ -63,25 +68,63 @@ function makeMap(id){let m=L.map(id,{preferCanvas:true});let streets=L.tileLayer
 const tidalMap=makeMap('tidalMap'),futureMap=makeMap('futureMap');let tidalOverlay=null,futureOverlay=null;
 function drawTidal(){const scenario=document.getElementById('tidalScenario').value,mode=document.getElementById('tidalMode').value;if(tidalOverlay)tidalMap.removeLayer(tidalOverlay);tidalOverlay=L.imageOverlay(layers[scenario+'|'+mode],bounds,{opacity:.86,interactive:false}).addTo(tidalMap);document.getElementById('tidalLegend').innerHTML='<strong>'+scenario+' annual flood days</strong> · 1–10 days · pale blue &nbsp; | &nbsp; 11–30 · blue &nbsp; | &nbsp; 31–100 · dark blue &nbsp; | &nbsp; 101–200 · purple &nbsp; | &nbsp; 201–347 · magenta &nbsp; | &nbsp; 348–366 · dark red';}
 function drawFuture(){const s=document.getElementById('futureScenario').value,mode=document.getElementById('futureMode').value;if(futureOverlay)futureMap.removeLayer(futureOverlay);futureOverlay=L.imageOverlay(layers[s+'|'+mode],bounds,{opacity:.86,interactive:false}).addTo(futureMap);}
+
+
+
+
+
+// NORWALK_SANDY_PRESERVE_VIEW
+let sandySavedView = null;
+
+window.addEventListener('message', function(event) {
+  if (event.origin !== window.location.origin) return;
+  if (!event.data || event.data.type !== 'nw-sandy-view') return;
+  sandySavedView = event.data.view;
+});
+
 function storm(){
- const e=document.getElementById('event').value,s=document.getElementById('stormScenario').value;
+ const e=document.getElementById('event').value;
+ const s=document.getElementById('stormScenario').value;
  const panel=document.getElementById('stormDisplay');
- let iframe=document.getElementById('nwSandyIframe');
- if(!iframe){
-   const old=panel.querySelector('iframe');
-   if(old){old.id='nwSandyIframe';iframe=old;}
- }
- if(e==='sandy'&&s==='Historical'){
-   if(!iframe){panel.innerHTML='<p>Existing Sandy viewer not found.</p>';return;}
-   iframe.style.display='block';
-   const pending=iframe.getAttribute('data-src');
-   if(pending){iframe.removeAttribute('data-src');iframe.src=pending;}
-   const notice=panel.querySelector('.nwUnavailable');if(notice)notice.remove();
+
+ let frame=document.getElementById('nwSandyIframe') ||
+           panel.querySelector('iframe');
+
+ if(!frame)return;
+ frame.id='nwSandyIframe';
+
+ let notice=panel.querySelector('.nwUnavailable');
+
+ const pages={
+   'Historical':'sandy_v3_maxdepth_inspect_domain.html',
+   '2012':'sandy_v3_maxdepth_inspect_domain.html',
+   '2050':'sandy_2050_2m.html',
+   '2075':'sandy_2075_2m.html',
+   '2100':'sandy_2100_2m.html'
+ };
+
+ if(e==='sandy' && pages[s]){
+   if(notice)notice.remove();
+   frame.style.display='block';
+   frame.removeAttribute('data-src');
+
+   if(frame.getAttribute('src')!==pages[s]){
+       let url=pages[s];
+       if(sandySavedView)
+         url += '?view='+encodeURIComponent(JSON.stringify(sandySavedView));
+       frame.src=url;
+   }
+
  }else{
-   if(iframe)iframe.style.display='none';
-   let notice=panel.querySelector('.nwUnavailable');
-   if(!notice){notice=document.createElement('div');notice.className='content nwUnavailable';panel.appendChild(notice);}
-   notice.innerHTML='<h2>Simulation not yet available</h2><p>This event and sea-level combination has not been simulated. No synthetic flood-depth map or unsupported return period is shown.</p>';
+   frame.style.display='none';
+
+   if(!notice){
+     notice=document.createElement('div');
+     notice.className='content nwUnavailable';
+     panel.appendChild(notice);
+   }
+
+   notice.innerHTML='<h2>Simulation not yet available</h2>';
  }
 }
 function showTab(tab){document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.id===tab));document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.tab===tab));if(tab==='tidal')setTimeout(()=>tidalMap.invalidateSize(),50);if(tab==='future')setTimeout(()=>{futureMap.invalidateSize({pan:false});futureMap.fitBounds(bounds);},150);if(tab==='storms')setTimeout(storm,40);}

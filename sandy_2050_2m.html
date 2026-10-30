@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Norwalk | Hurricane Sandy</title>
+<link rel="stylesheet"
+ href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+html,body,#map{height:100%;margin:0}
+body{font-family:system-ui,-apple-system,Arial,sans-serif}
+.panel{
+ position:absolute;right:15px;top:15px;z-index:1000;
+ width:292px;max-width:calc(100vw - 65px);
+ max-height:calc(100vh - 45px);overflow:auto;
+ background:white;padding:17px;border-radius:12px;
+ box-shadow:0 4px 20px #0003;
+}
+h2{font-size:19px;margin:0 0 5px}
+.sub{font-size:12px;color:#64748b;margin-bottom:14px}
+label{display:block;font-size:12px;font-weight:650;margin:12px 0 5px}
+select{width:100%;padding:9px;border:1px solid #cbd5e1;
+ border-radius:7px;background:white}
+.legend{font-size:12px;margin-top:15px}
+.legend div{display:flex;align-items:center;gap:9px;margin:6px 0}
+.swatch{width:17px;height:15px;border-radius:3px}
+.small{font-size:11px;color:#566273;line-height:1.55}
+.note{padding:10px;background:#f1f5f9;border-radius:7px;
+ font-size:12px;margin-top:13px}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="panel">
+<h2>Hurricane Sandy</h2>
+<div class="sub">October 2012 storm · 2050 sea level · maximum flood depth</div>
+
+<label>Flood exposure</label>
+<select id="cover">
+<option value="land">Land-classified terrain</option>
+<option value="developed">Developed-classified terrain</option>
+</select>
+
+<label>Basemap</label>
+<select id="base">
+<option value="satellite">Satellite imagery</option>
+<option value="streets">Streets and place names</option>
+</select>
+
+<label>Overlay opacity: <span id="ov">75%</span></label>
+<input type="range" id="opacity" min="20" max="100"
+ value="75" style="width:100%">
+
+<div class="legend">
+<strong>Maximum modeled flood depth</strong>
+<div><span class="swatch" style="background:#73d3f4"></span>0.2–1.0 ft</div>
+<div><span class="swatch" style="background:#2d9deb"></span>1.0–2.0 ft</div>
+<div><span class="swatch" style="background:#2356cc"></span>2.0–3.3 ft</div>
+<div><span class="swatch" style="background:#713aba"></span>3.3–6.6 ft</div>
+<div><span class="swatch" style="background:#ce3f60"></span>6.6–9.8 ft</div>
+<div><span class="swatch" style="background:#931627"></span>Over 9.8 ft</div>
+</div>
+
+<div class="note"><b>Click anywhere</b> to inspect maximum modeled
+water depth at that location.</div>
+
+<p class="small">
+Maximum depth above local modeled terrain during the
+Sandy simulation. Values are not water-surface elevations
+relative to NAVD88. The selectable overlays are land-cover
+filtered; numerical inspection samples the underlying
+unfiltered depth raster.
+</p>
+<p class="small">
+20 m SFINCS hydraulics mapped onto 2 m terrain.
+Preliminary modeled reconstruction, not a measured
+flood extent or validated property-level assessment.
+</p>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const bounds=[[41.03764508719307, -73.46944031988689], [41.14222508719307, -73.34173631988689]];
+const rasterBounds=[[41.037659752530075, -73.46944031988689], [41.14222508719307, -73.34174474933786]];
+const WIDTH=2200, HEIGHT=2388;
+
+const map=L.map("map");
+const satellite=L.tileLayer(
+ "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+ {maxZoom:19,attribution:"Imagery: Esri and contributors"}
+);
+const streets=L.tileLayer(
+ "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+ {maxZoom:19,attribution:"© OpenStreetMap contributors"}
+);
+satellite.addTo(map);
+
+const overlays={
+ land:L.imageOverlay("sandy_scenarios/sandy_2050_land.png",
+                     bounds,{opacity:.75}),
+ developed:L.imageOverlay("sandy_scenarios/sandy_2050_developed.png",
+                          bounds,{opacity:.75})
+};
+
+let current=null;
+function update(){
+ if(current)map.removeLayer(current);
+ current=overlays[document.getElementById("cover").value];
+ current.setOpacity(Number(document.getElementById("opacity").value)/100);
+ current.addTo(map);
+ document.getElementById("ov").textContent=
+  document.getElementById("opacity").value+"%";
+}
+
+document.getElementById("cover").addEventListener("change",update);
+document.getElementById("opacity").addEventListener("input",update);
+
+document.getElementById("base").addEventListener("change",()=>{
+ map.removeLayer(satellite);
+ map.removeLayer(streets);
+ const selected=document.getElementById("base").value==="satellite"
+    ?satellite:streets;
+ selected.addTo(map);
+ selected.bringToBack();
+});
+
+map.fitBounds(bounds);
+update();
+
+const encoded=new Image();
+encoded.src="sandy_scenarios/sandy_2050_depth_rgb.png";
+const canvas=document.createElement("canvas");
+canvas.width=WIDTH;canvas.height=HEIGHT;
+const ctx=canvas.getContext("2d",{willReadFrequently:true});
+let loaded=false;
+encoded.onload=()=>{ctx.drawImage(encoded,0,0);loaded=true;};
+
+map.on("click",e=>{
+ if(!loaded)return;
+ const lat=e.latlng.lat, lon=e.latlng.lng;
+ const bottom=rasterBounds[0][0],left=rasterBounds[0][1];
+ const top=rasterBounds[1][0],right=rasterBounds[1][1];
+ const x=Math.floor((lon-left)/(right-left)*WIDTH);
+ const y=Math.floor((top-lat)/(top-bottom)*HEIGHT);
+ if(x<0||x>=WIDTH||y<0||y>=HEIGHT)return;
+
+ const pixel=ctx.getImageData(x,y,1,1).data;
+ let content="Outside valid modeled terrain.";
+ if(pixel[2]===255){
+  const cm=pixel[0]*256+pixel[1];
+  const feet=cm/100*3.28084;
+  content=`<b>Hurricane Sandy · 2050 sea level</b>
+   <div style="font-size:20px;margin:6px 0"><b>${feet.toFixed(1)} ft</b></div>
+   <div>Maximum modeled depth (${(cm/100).toFixed(2)} m)</div>
+   <small>Sampled at browser-raster resolution.</small>`;
+ }
+ L.popup().setLatLng(e.latlng).setContent(content).openOn(map);
+});
+</script>
+<script src="norwalk_domain_focus.js"></script>
+<script>
+document.title = "Norwalk | Sandy + 2050 sea level";
+</script>
+
+<script>
+// NORWALK_SANDY_PRESERVE_VIEW
+(function(){
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get('view');
+
+  if (raw) {
+    try {
+      const v = JSON.parse(raw);
+      if (Number.isFinite(v.lat) && Number.isFinite(v.lng) &&
+          Number.isFinite(v.zoom)) {
+        map.setView([v.lat, v.lng], v.zoom, {animate:false});
+      }
+    } catch(e) {
+      console.warn('Could not restore Sandy map view', e);
+    }
+  }
+
+  function reportView(){
+    if (window.parent === window) return;
+    const c = map.getCenter();
+    window.parent.postMessage({
+      type:'nw-sandy-view',
+      view:{lat:c.lat,lng:c.lng,zoom:map.getZoom()}
+    }, window.location.origin);
+  }
+
+  map.on('moveend zoomend', reportView);
+  reportView();
+})();
+</script>
+
+</body>
+</html>
