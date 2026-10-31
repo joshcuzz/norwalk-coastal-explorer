@@ -27,29 +27,191 @@ select{width:100%;padding:9px;border:1px solid #cbd5e1;
 .small{font-size:11px;color:#566273;line-height:1.55}
 .note{padding:10px;background:#f1f5f9;border-radius:7px;
  font-size:12px;margin-top:13px}
+
+/* Horizontal Sandy controls: same organization as other tabs */
+html, body {
+    height: 100%;
+    margin: 0;
+}
+body {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+#map {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+    width: 100%;
+}
+.nw-sandy-toolbar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+    padding: 12px 18px;
+    background: #fff;
+    border-bottom: 1px solid #dce3ea;
+    box-sizing: border-box;
+    z-index: 1001;
+    font-size: 14px;
+}
+.nw-sandy-control {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+.nw-sandy-control select {
+    width: auto;
+    min-width: 155px;
+    max-width: 240px;
+    padding: 8px;
+    font-weight: 400;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: white;
+}
+.nw-sandy-control input[type="range"] {
+    width: 130px;
+    cursor: pointer;
+}
+.nw-sandy-control #ov {
+    min-width: 35px;
+    font-weight: 500;
+}
+.panel {
+    top: 85px;
+    max-height: calc(100vh - 110px);
+    box-sizing: border-box;
+}
+@media (max-width: 900px) {
+    .nw-sandy-toolbar {gap: 8px 12px; padding: 8px;}
+    .nw-sandy-control select {min-width: 110px; max-width: 180px;}
+    .panel {top: 125px; max-height: calc(100vh - 145px);}
+}
+
 </style>
+
+<style id="nw-storm-layout-v2">
+html, body {
+    height: 100% !important;
+    margin: 0 !important;
+}
+
+body {
+    overflow: hidden !important;
+}
+
+#nwStormToolbar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+    box-sizing: border-box;
+    padding: 10px 18px;
+    background: #fff;
+    border-bottom: 1px solid #d9e1ea;
+    font: 600 14px system-ui, sans-serif;
+}
+
+#nwStormToolbar .nw-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#nwStormToolbar select {
+    width: auto !important;
+    min-width: 150px;
+    max-width: 260px;
+    margin: 0 !important;
+    padding: 7px 9px;
+    font-weight: 400;
+}
+
+#nwStormToolbar input[type="range"] {
+    width: 130px !important;
+    margin: 0 !important;
+}
+
+#nwStormToolbar #ov {
+    min-width: 35px;
+    font-weight: 500;
+}
+
+body #map {
+    position: absolute !important;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: var(--nw-storm-toolbar-height, 58px) !important;
+    height: auto !important;
+    width: 100% !important;
+}
+
+body .panel {
+    position: absolute !important;
+    top: calc(var(--nw-storm-toolbar-height, 58px) + 14px) !important;
+    right: 15px !important;
+    max-height: calc(
+        100% - var(--nw-storm-toolbar-height, 58px) - 30px
+    ) !important;
+    overflow: auto !important;
+    box-sizing: border-box;
+}
+
+@media (max-width: 850px) {
+    #nwStormToolbar {
+        gap: 8px 12px;
+        padding: 8px;
+    }
+    #nwStormToolbar select {
+        min-width: 110px;
+        max-width: 180px;
+    }
+}
+</style>
+
 </head>
 <body>
+
+<div class="nw-sandy-toolbar">
+  <label class="nw-sandy-control">
+    Flood exposure
+    <select id="cover">
+      <option value="land">Land-classified terrain</option>
+      <option value="developed">Developed-classified terrain</option>
+    </select>
+  </label>
+  <label class="nw-sandy-control">
+    Basemap
+    <select id="base">
+      <option value="satellite">Satellite imagery</option>
+      <option value="streets">Streets and place names</option>
+    </select>
+  </label>
+  <label class="nw-sandy-control">
+    Opacity
+    <input type="range" id="opacity"
+           min="0" max="100" step="5" value="75">
+    <span id="ov">75%</span>
+  </label>
+</div>
+
 <div id="map"></div>
 <div class="panel">
 <h2>Hurricane Sandy</h2>
 <div class="sub">October 2012 storm · 2100 sea level · maximum flood depth</div>
 
-<label>Flood exposure</label>
-<select id="cover">
-<option value="land">Land-classified terrain</option>
-<option value="developed">Developed-classified terrain</option>
-</select>
 
-<label>Basemap</label>
-<select id="base">
-<option value="satellite">Satellite imagery</option>
-<option value="streets">Streets and place names</option>
-</select>
-
-<label>Overlay opacity: <span id="ov">75%</span></label>
-<input type="range" id="opacity" min="20" max="100"
- value="75" style="width:100%">
 
 <div class="legend">
 <strong>Maximum modeled flood depth</strong>
@@ -90,8 +252,8 @@ const satellite=L.tileLayer(
  {maxZoom:19,attribution:"Imagery: Esri and contributors"}
 );
 const streets=L.tileLayer(
- "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
- {maxZoom:19,attribution:"© OpenStreetMap contributors"}
+ "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+ {maxZoom:19,attribution:"Tiles © Esri"}
 );
 satellite.addTo(map);
 
@@ -191,6 +353,101 @@ document.title = "Norwalk | Sandy + 2100 sea level";
 
   map.on('moveend zoomend', reportView);
   reportView();
+})();
+</script>
+
+
+<script id="nw-storm-layout-logic-v2">
+(function () {
+    const panel = document.querySelector('.panel');
+    const mapElement = document.getElementById('map');
+
+    const cover = document.getElementById('cover');
+    const base = document.getElementById('base');
+    const opacity = document.getElementById('opacity');
+    const ov = document.getElementById('ov');
+
+    if (!panel || !mapElement ||
+        !cover || !base || !opacity || !ov) {
+        console.error('Sandy toolbar: required controls missing');
+        return;
+    }
+
+    // Move the original controls without recreating them.
+    // Their existing JavaScript event handlers stay attached.
+    const coverLabel = cover.previousElementSibling;
+    const baseLabel = base.previousElementSibling;
+    const opacityLabel = opacity.previousElementSibling;
+
+    const toolbar = document.createElement('div');
+    toolbar.id = 'nwStormToolbar';
+
+    function addControl(title, element) {
+        const wrapper = document.createElement('label');
+        wrapper.className = 'nw-control';
+
+        const heading = document.createElement('span');
+        heading.textContent = title;
+
+        wrapper.appendChild(heading);
+        wrapper.appendChild(element);
+        toolbar.appendChild(wrapper);
+    }
+
+    addControl('Flood exposure', cover);
+    addControl('Basemap', base);
+
+    const opacityWrapper = document.createElement('label');
+    opacityWrapper.className = 'nw-control';
+    opacityWrapper.appendChild(
+        document.createTextNode('Opacity')
+    );
+    opacityWrapper.appendChild(opacity);
+    opacityWrapper.appendChild(ov);
+    toolbar.appendChild(opacityWrapper);
+
+    // Remove the now-empty labels from the sidebar.
+    for (const label of [
+        coverLabel, baseLabel, opacityLabel
+    ]) {
+        if (label && label.parentNode === panel) {
+            label.remove();
+        }
+    }
+
+    // Ensure only the title, description, and legend
+    // remain in the Sandy right-hand panel.
+    document.body.insertBefore(toolbar, mapElement);
+
+    opacity.min = '0';
+    opacity.max = '100';
+    opacity.step = '5';
+
+    function resizeToolbar() {
+        const height = Math.ceil(
+            toolbar.getBoundingClientRect().height
+        );
+
+        document.documentElement.style.setProperty(
+            '--nw-storm-toolbar-height',
+            height + 'px'
+        );
+
+        if (typeof map !== 'undefined' &&
+            map && typeof map.invalidateSize === 'function') {
+            map.invalidateSize({
+                animate: false,
+                pan: false
+            });
+        }
+    }
+
+    resizeToolbar();
+    window.addEventListener('resize', resizeToolbar);
+
+    // Same Esri street basemap used by Tidal Flooding.
+    // The original Sandy base selector stays functional.
+
 })();
 </script>
 

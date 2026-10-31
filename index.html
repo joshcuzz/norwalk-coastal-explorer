@@ -53,18 +53,64 @@ window.fetch=(input,opts)=>{
 })();
 </script>
 </head><body><header><h1>Norwalk Coastal Flood Explorer</h1><p>Research simulations · 2024 tides with 2024, 2050, and 2100 relative sea levels</p></header><nav><button class="active" data-tab="tidal">Tidal Flooding</button><button data-tab="storms">Storm Flooding</button><button data-tab="future">Future Sea Level</button><button data-tab="about">About</button></nav>
-<section id="tidal" class="tab active"><div class="toolbar"><label>Sea-level scenario <select id="tidalScenario"><option>2024</option><option>2050</option><option>2100</option></select></label><label>Map display <select id="tidalMode"><option value="coastal" selected>Coastal flooding only (hide ≥348 days)</option><option value="all">Include nearly permanently submerged areas</option><option value="developed">Developed-classified land only</option></select></label></div><div id="tidalMap" class="mainmap"></div><div id="tidalLegend" class="legend"></div></section>
+<section id="tidal" class="tab active"><div class="toolbar"><label>Sea-level scenario <select id="tidalScenario"><option>2024</option><option>2050</option><option>2100</option></select></label><label>Map display <select id="tidalMode"><option value="all" selected>All modeled tidal flooding</option><option value="developed">Developed-classified land only</option></select></label><label style="display:inline-flex;align-items:center;gap:8px">Opacity <input id="tidalOpacity" type="range" min="0" max="100" value="85" step="5" style="width:115px;cursor:pointer"><span id="tidalOpacityValue" style="min-width:38px">85%</span></label></div><div id="tidalMap" class="mainmap"></div><div id="tidalLegend" class="legend"></div></section>
 <section id="storms" class="tab"><p style="padding:9px 16px"><a href="storm_100yr.html" target="_blank" rel="noopener">View synthetic 100-year baseline inundation map (provisional)</a></p><div class="toolbar"><label>Event <select id="event"><option value="sandy">Hurricane Sandy (2012)</option><option value="10">1-in-10-year coastal flood (not simulated)</option><option value="100">1-in-100-year coastal flood (not simulated)</option></select></label><label>Sea-level case <select id="stormScenario">
 <option value="Historical">Historical Sandy (2012)</option>
 <option value="2050">2050</option>
 <option value="2075">2075</option>
 <option value="2100">2100</option>
 </select></label></div><div id="stormDisplay"><iframe class="embed" data-src="sandy_v3_maxdepth_inspect_domain.html" title="Historical Sandy flood depth"></iframe></div></section>
-<section id="future" class="tab"><div class="toolbar"><label>Additional flood days vs 2024 <select id="futureScenario"><option value="2050-2024">2050 minus 2024</option><option value="2100-2024">2100 minus 2024</option></select></label><label>Display <select id="futureMode"><option value="all">All modeled locations</option><option value="developed">Developed-classified land only</option></select></label></div><div id="futureMap" class="mainmap"></div><div class="legend">Negative change · purple &nbsp; | &nbsp; +1–5 days · cyan &nbsp; | &nbsp; +6–20 · blue &nbsp; | &nbsp; +21–60 · violet &nbsp; | &nbsp; +61–150 · magenta &nbsp; | &nbsp; +151+ · red</div></section>
-<section id="about" class="tab"><div class="content"><h2>What these maps show</h2><p>The annual tidal maps depict the number of UTC calendar days during which a 2 m terrain pixel exceeds 5 cm modeled water depth, conditioned on the corresponding 20 m SFINCS cell being hydraulically wet. A day counts if at least one hourly snapshot meets that threshold.</p><p>The 2050 and 2100 experiments apply JPL relative sea-level increments of +0.197504 m and +0.643954 m to the same 2024 tidal forcing. Geometry and 2021 C-CAP land-cover classification are held fixed. These are controlled sea-level sensitivity experiments, not predictions of future weather or storm frequency.</p><p>The flood-day difference maps subtract the 2024 annual counts from the future-scenario counts. Negative differences, if present, are shown separately. The 348-day display exclusion is a visualization filter, not a hydrodynamic correction; retained water and connectivity require further QA.</p><p>The map uses 10 m approximate-resolution image previews for web performance. Scientific analysis uses the accompanying full-resolution 2 m GeoTIFFs. Map click values are sampled from the original 2 m scientific raster; preview positioning on a web tile basemap is approximate; use the original geo-referenced TIFFs for accurate location-by-location scientific analysis.</p><p><strong>Storm flooding:</strong> Historical Sandy replay is available where the existing map is installed. The 1-in-10-year and 1-in-100-year events and future Sandy replays have not been simulated. They require separately justified extreme-water-level/tide/storm forcing and event simulations. A 100-year return period applies to a specified baseline distribution, not automatically to its sea-level-shifted future counterpart.</p><p>Methods: SFINCS 20 m hydraulics; original 2 m topobathymetry; C-CAP classes 2/3/4 considered developed. The regional sea-level forcing and model assumptions should be documented in a full technical methods note before public release.</p><p><strong>Future Sea Level:</strong> Ocean-connected below-mean-water inundation is estimated from fixed 2 m terrain using an explicitly specified 2024 MHHW elevation in NAVD88. This static calculation does not simulate tides, drainage, defenses, waves, or geomorphic evolution. Sea-level offsets are from JPL RCP8.5 member 01, not an ensemble mean. The shoreline position is indicative, not a forecast.</p><div class="stat" id="stats"></div></div></section>
+<section id="future" class="tab"><div class="toolbar"><label>Additional flood days vs 2024 <select id="futureScenario"><option value="2050-2024">2050 minus 2024</option><option value="2100-2024">2100 minus 2024</option></select></label><label>Display <select id="futureMode"><option value="all">All modeled locations</option><option value="developed">Developed-classified land only</option></select></label><label style="display:inline-flex;align-items:center;gap:8px">Opacity <input id="futureOpacity" type="range" min="0" max="100" value="85" step="5" style="width:115px;cursor:pointer"><span id="futureOpacityValue" style="min-width:38px">85%</span></label></div><div id="futureMap" class="mainmap"></div><div class="legend">Negative change · purple &nbsp; | &nbsp; +1–5 days · cyan &nbsp; | &nbsp; +6–20 · blue &nbsp; | &nbsp; +21–60 · violet &nbsp; | &nbsp; +61–150 · magenta &nbsp; | &nbsp; +151+ · red</div></section>
+<section id="about" class="tab"><div class="content"><h2>What these maps show</h2><p>The annual tidal maps depict the number of UTC calendar days during which a 2 m terrain pixel exceeds 5 cm modeled water depth, conditioned on the corresponding 20 m SFINCS cell being hydraulically wet. A day counts if at least one hourly snapshot meets that threshold.</p><p>The 2050 and 2100 experiments apply JPL relative sea-level increments of +0.197504 m and +0.643954 m to the same 2024 tidal forcing. Geometry and 2021 C-CAP land-cover classification are held fixed. These are controlled sea-level sensitivity experiments, not predictions of future weather or storm frequency.</p><p>The flood-day difference maps subtract the 2024 annual counts from the future-scenario counts. Negative differences, if present, are shown separately. The 348-day display exclusion is a visualization filter, not a hydrodynamic correction; retained water and connectivity require further QA.</p><p>The map uses 10 m approximate-resolution image previews for web performance. Scientific analysis uses the accompanying full-resolution 2 m GeoTIFFs. Map click values are sampled from the original 2 m scientific raster; preview positioning on a web tile basemap is approximate; use the original geo-referenced TIFFs for accurate location-by-location scientific analysis.</p><p><strong>Storm flooding:</strong> Historical Sandy replay is available where the existing map is installed. The 1-in-10-year and 1-in-100-year events and future Sandy replays have not been simulated. They require separately justified extreme-water-level/tide/storm forcing and event simulations. A 100-year return period applies to a specified baseline distribution, not automatically to its sea-level-shifted future counterpart.</p><p>Methods: SFINCS 20 m hydraulics; original 2 m topobathymetry; C-CAP classes 2/3/4 considered developed. The regional sea-level forcing and model assumptions should be documented in a full technical methods note before public release.</p><p><strong>Future Sea Level:</strong> Ocean-connected below-mean-water inundation is estimated from fixed 2 m terrain using an explicitly specified 2024 MHHW elevation in NAVD88. This static calculation does not simulate tides, drainage, defenses, waves, or geomorphic evolution. Sea-level offsets are from JPL RCP8.5 member 01, not an ensemble mean. The shoreline position is indicative, not a forecast.</p><div class="stat" id="stats"></div></div>
+<h3>Reconstructed tidal inundation frequency</h3>
+
+<p>
+The annual tidal flooding maps use hourly SFINCS
+hydrodynamic simulations with 2024 tidal forcing
+under 2024, 2050, and 2100 relative sea-level
+conditions. Flood-day frequencies are evaluated
+using 2 m terrain elevations and a 5 cm
+inundation-depth threshold.
+</p>
+
+<p>
+In some locations, the hydrodynamic model retains
+water after an inundation event, potentially because
+local drainage pathways are not explicitly resolved.
+For cells identified as persistently nonresponsive
+to tides, we estimate tidal inundation frequency
+using nearby tidally responsive model water levels,
+the local subgrid wetting threshold, and the
+underlying 2 m terrain.
+</p>
+
+<p>
+These reconstructed results estimate days of
+potential tidal inundation, rather than days that
+standing water necessarily remains on the ground.
+The reconstruction does not independently establish
+hydraulic connectivity or explicitly simulate
+stormwater drainage.
+</p>
+
+<p>
+The method is experimental. Results are not
+observations of street or property flooding and
+should not be used for emergency planning,
+engineering design, insurance decisions, or
+property-level flood-risk determinations.
+</p>
+
+<p>
+Future scenarios apply relative sea-level changes
+to the same 2024 tidal forcing. They are controlled
+sea-level sensitivity experiments rather than
+predictions of future daily weather or storm events.
+</p>
+</section>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>
 const bounds=[[41.037659752530075, -73.46944031988689], [41.14222508719307, -73.34174474933786]],layers={"2024|coastal": "scenario_maps_v1/2024_coastal.png", "2024|all": "scenario_maps_v1/2024_all.png", "2024|developed": "scenario_maps_v1/2024_developed.png", "2050|coastal": "scenario_maps_v1/2050_coastal.png", "2050|all": "scenario_maps_v1/2050_all.png", "2050|developed": "scenario_maps_v1/2050_developed.png", "2100|coastal": "scenario_maps_v1/2100_coastal.png", "2100|all": "scenario_maps_v1/2100_all.png", "2100|developed": "scenario_maps_v1/2100_developed.png", "2050-2024|all": "scenario_maps_v1/2050_minus_2024_all.png", "2050-2024|developed": "scenario_maps_v1/2050_minus_2024_developed.png", "2100-2024|all": "scenario_maps_v1/2100_minus_2024_all.png", "2100-2024|developed": "scenario_maps_v1/2100_minus_2024_developed.png"},statistics={"scenarios": {"2024": {"valid": 5522100, "any": 357503, "1-10": 77221, "11-30": 11307, "31-100": 28740, "101-347": 47617, "348-366": 192618, "sum_days": 82459814, "mean_days": 14.933}, "2050": {"valid": 5522100, "any": 467475, "1-10": 138074, "11-30": 22143, "31-100": 23951, "101-347": 58961, "348-366": 224346, "sum_days": 97718804, "mean_days": 17.696}, "2100": {"valid": 5522100, "any": 829941, "1-10": 251185, "11-30": 70111, "31-100": 95693, "101-347": 70244, "348-366": 342708, "sum_days": 146429766, "mean_days": 26.517}}, "differences": {"2050-2024": {"valid": 5522100, "increase": 308011, "decrease": 1, "unchanged": 5214088, "mean_change_sum": 15258990, "mean_change": 2.763}, "2100-2024": {"valid": 5522100, "increase": 681357, "decrease": 0, "unchanged": 4840743, "mean_change_sum": 63969952, "mean_change": 11.584}}};
-function makeMap(id){let m=L.map(id,{preferCanvas:true});let streets=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'});let satellite=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Esri World Imagery'});satellite.addTo(m);L.control.layers({'Satellite':satellite,'Street map':streets}).addTo(m);m.fitBounds(bounds);return m;}
+function makeMap(id){let m=L.map(id,{preferCanvas:true});let streets=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri'});let satellite=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Esri World Imagery'});satellite.addTo(m);L.control.layers({'Satellite':satellite,'Street map':streets}).addTo(m);m.fitBounds(bounds);return m;}
 const tidalMap=makeMap('tidalMap'),futureMap=makeMap('futureMap');let tidalOverlay=null,futureOverlay=null;
 function drawTidal(){const scenario=document.getElementById('tidalScenario').value,mode=document.getElementById('tidalMode').value;if(tidalOverlay)tidalMap.removeLayer(tidalOverlay);tidalOverlay=L.imageOverlay(layers[scenario+'|'+mode],bounds,{opacity:.86,interactive:false}).addTo(tidalMap);document.getElementById('tidalLegend').innerHTML='<strong>'+scenario+' annual flood days</strong> · 1–10 days · pale blue &nbsp; | &nbsp; 11–30 · blue &nbsp; | &nbsp; 31–100 · dark blue &nbsp; | &nbsp; 101–200 · purple &nbsp; | &nbsp; 201–347 · magenta &nbsp; | &nbsp; 348–366 · dark red';}
 function drawFuture(){const s=document.getElementById('futureScenario').value,mode=document.getElementById('futureMode').value;if(futureOverlay)futureMap.removeLayer(futureOverlay);futureOverlay=L.imageOverlay(layers[s+'|'+mode],bounds,{opacity:.86,interactive:false}).addTo(futureMap);}
@@ -96,11 +142,11 @@ function storm(){
  let notice=panel.querySelector('.nwUnavailable');
 
  const pages={
-   'Historical':'sandy_v3_maxdepth_inspect_domain.html',
-   '2012':'sandy_v3_maxdepth_inspect_domain.html',
-   '2050':'sandy_2050_2m.html',
-   '2075':'sandy_2075_2m.html',
-   '2100':'sandy_2100_2m.html'
+   'Historical':'sandy_v3_maxdepth_inspect_domain.html?layout=3',
+   '2012':'sandy_v3_maxdepth_inspect_domain.html?layout=3',
+   '2050':'sandy_2050_2m.html?layout=3',
+   '2075':'sandy_2075_2m.html?layout=3',
+   '2100':'sandy_2100_2m.html?layout=3'
  };
 
  if(e==='sandy' && pages[s]){
@@ -111,7 +157,7 @@ function storm(){
    if(frame.getAttribute('src')!==pages[s]){
        let url=pages[s];
        if(sandySavedView)
-         url += '?view='+encodeURIComponent(JSON.stringify(sandySavedView));
+         url += (pages[s].includes('?') ? '&view=' : '?view=')+encodeURIComponent(JSON.stringify(sandySavedView));
        frame.src=url;
    }
 
@@ -151,7 +197,7 @@ const nwDayItems=[['#6dd6ea','1–10 days'],['#22a0d8','11–30 days'],['#2865cb
 const nwChangeItems=[['#6b48a0','Decrease'],['#5acfd6','+1–5 days'],['#1b8bcf','+6–20 days'],['#524abe','+21–60 days'],['#d33770','+61–150 days'],['#a32331','+151+ days']];
 function makeNWLegend(map,kind){
  const c=L.control({position:'bottomright'});
- c.onAdd=()=>{const div=L.DomUtil.create('div','nwlegend');div.innerHTML='<strong>'+(kind==='days'?'Annual flood days':'Additional flood days')+'</strong>'+ (kind==='days'?nwDayItems:nwChangeItems).map(([color,name])=>'<div class="nwitem"><span class="nwswatch" style="background:'+color+'"></span><span>'+name+'</span></div>').join('')+'<small>Click map to inspect the original 2 m GeoTIFF</small>';
+ c.onAdd=()=>{const div=L.DomUtil.create('div','nwlegend');div.innerHTML='<strong>'+(kind==='days'?'Annual flood days':'Additional flood days')+'</strong>'+ (kind==='days'?nwDayItems:nwChangeItems).map(([color,name])=>'<div class="nwitem"><span class="nwswatch" style="background:'+color+'"></span><span>'+name+'</span></div>').join('')+'<small>Click map to inspect the reconstructed 2 m flood-day data</small>';
  L.DomEvent.disableClickPropagation(div);return div;};c.addTo(map);
 }
 makeNWLegend(tidalMap,'days');
@@ -216,6 +262,9 @@ function drawTidalNative(){
   if(tidalOverlay){tidalMap.removeLayer(tidalOverlay);tidalOverlay=null;}
   if(tidalNative)tidalMap.removeLayer(tidalNative);
   tidalNative=nativeTile(s,mode).addTo(tidalMap);
+  tidalNative.setOpacity(Number(document.getElementById('tidalOpacity').value)/100);
+  tidalNative.setZIndex(1000);
+  tidalNative.bringToFront();
   document.getElementById('tidalLegend').innerHTML='<strong>'+s+' annual flood days</strong> · Native 2 m data · 2024 tides';
 }
 function drawFutureNative(){
@@ -224,7 +273,58 @@ function drawFutureNative(){
   if(futureOverlay){futureMap.removeLayer(futureOverlay);futureOverlay=null;}
   if(futureNative)futureMap.removeLayer(futureNative);
   futureNative=nativeTile(s,mode).addTo(futureMap);
+  futureNative.setOpacity(Number(document.getElementById('futureOpacity').value)/100);
+  futureNative.setZIndex(1000);
+  futureNative.bringToFront();
 }
+
+for (const [map, getFlood] of [
+  [tidalMap, () => tidalNative],
+  [futureMap, () => futureNative]
+]) {
+  map.on('baselayerchange', () => {
+    const flood = getFlood();
+    if (flood && map.hasLayer(flood)) {
+      flood.setZIndex(1000);
+      flood.bringToFront();
+    }
+  });
+}
+
+
+// Adjustable opacity for reconstructed tidal and future flood tiles.
+function nwInstallOpacity(sliderId, map, getLayer) {
+  const slider = document.getElementById(sliderId);
+  const output = document.getElementById(sliderId + 'Value');
+
+  const apply = () => {
+    const opacity = Number(slider.value) / 100;
+    output.textContent = slider.value + '%';
+
+    const layer = getLayer();
+    if (layer && map.hasLayer(layer)) {
+      layer.setOpacity(opacity);
+    }
+  };
+
+  slider.addEventListener('input', apply);
+
+  map.on('layeradd', event => {
+    if (event.layer === getLayer()) apply();
+  });
+
+  return apply;
+}
+
+const nwApplyTidalOpacity = nwInstallOpacity(
+  'tidalOpacity', tidalMap, () => tidalNative
+);
+const nwApplyFutureOpacity = nwInstallOpacity(
+  'futureOpacity', futureMap, () => futureNative
+);
+
+// Ensure newly selected scenarios inherit the selected opacity.
+
 // Keep original dropdown event listeners but make their original draw functions dispatch native tiles.
 drawTidal=drawTidalNative;
 drawFuture=drawFutureNative;
@@ -271,7 +371,39 @@ futureMap.on('click',ev=>readOriginal(futureMap,ev,document.getElementById('futu
  if(legend)legend.textContent='Potential MHHW inundation depth (feet): 0–0.5 ft · light cyan | 0.5–1.0 ft · cyan | 1.0–2.0 ft · blue | 2.0–3.3 ft · dark blue | 3.3–6.6 ft · violet | >6.6 ft · purple. Zero and disconnected areas are transparent.';
  const oldFutureClick=()=>{};
  futureMap.off('click');
- let mslLayer=null;
+ 
+// Opacity control for the MHHW inundation overlay.
+const nwMhhwOpacityLabel = document.createElement('label');
+nwMhhwOpacityLabel.style.cssText =
+  'display:inline-flex;align-items:center;gap:8px';
+
+nwMhhwOpacityLabel.innerHTML =
+  'Opacity <input id="nwMhhwOpacity" type="range" min="0" max="100" ' +
+  'value="85" step="5" style="width:115px;cursor:pointer">' +
+  '<span id="nwMhhwOpacityValue">85%</span>';
+
+bar.appendChild(nwMhhwOpacityLabel);
+
+let mslLayer=null;
+
+futureMap.on('layeradd', function(e) {
+  if (e.layer === mslLayer && mslLayer) {
+    mslLayer.setOpacity(
+      Number(document.getElementById('nwMhhwOpacity').value) / 100
+    );
+  }
+});
+
+
+
+document.getElementById('nwMhhwOpacity').addEventListener('input', function() {
+  const opacity = Number(this.value) / 100;
+  document.getElementById('nwMhhwOpacityValue').textContent =
+    this.value + '%';
+  if (mslLayer) mslLayer.setOpacity(opacity);
+});
+
+
  function redrawMSL(){
    if(futureOverlay){futureMap.removeLayer(futureOverlay);futureOverlay=null;}
    if(futureNative){futureMap.removeLayer(futureNative);futureNative=null;}
@@ -320,4 +452,272 @@ futureMap.on('click',ev=>readOriginal(futureMap,ev,document.getElementById('futu
  mode.dispatchEvent(new Event('change'));
 })();
 
-</script></body></html>
+</script>
+<script id="nw-mhhw-stacking-fix">
+(function () {
+    if (typeof futureMap === 'undefined') return;
+
+    function raiseFloodLayers() {
+        futureMap.eachLayer(function (layer) {
+            if (
+                layer instanceof L.TileLayer &&
+                typeof layer._url === 'string' &&
+                layer._url.startsWith('tiles/msl-')
+            ) {
+                layer.setZIndex(1000);
+                layer.bringToFront();
+            }
+        });
+    }
+
+    futureMap.on('baselayerchange', raiseFloodLayers);
+
+    futureMap.on('layeradd', function (event) {
+        const layer = event.layer;
+
+        if (
+            layer instanceof L.TileLayer &&
+            typeof layer._url === 'string' &&
+            layer._url.startsWith('tiles/msl-')
+        ) {
+            layer.setZIndex(1000);
+            layer.bringToFront();
+        }
+    });
+
+    raiseFloodLayers();
+})();
+</script>
+
+
+<style id="nwUnifiedStormToolbarV1">
+#storms > .toolbar {
+  display: flex !important;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 12px 18px;
+}
+#storms > .toolbar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+#storms > .toolbar select {
+  max-width: 245px;
+}
+#nwStormExtra {
+  display: contents;
+}
+#nwStormExtra input[type="range"] {
+  width: 125px;
+  cursor: pointer;
+}
+#nwStormExtra output {
+  min-width: 36px;
+}
+@media(max-width:750px) {
+  #storms > .toolbar {
+    gap: 8px 12px;
+    padding: 9px;
+  }
+  #storms > .toolbar select {
+    max-width: 170px;
+  }
+}
+</style>
+
+<script id="nwUnifiedStormToolbarLogicV1">
+(function() {
+  const section = document.getElementById('storms');
+  const toolbar = section.querySelector(':scope > .toolbar');
+  if (!toolbar) {
+    console.error('Storm toolbar not found');
+    return;
+  }
+
+  const extra = document.createElement('span');
+  extra.id = 'nwStormExtra';
+
+  function makeSelect(label, id) {
+    const wrap = document.createElement('label');
+    wrap.append(document.createTextNode(label));
+    const select = document.createElement('select');
+    select.id = id;
+    wrap.append(select);
+    extra.append(wrap);
+    return select;
+  }
+
+  const cover = makeSelect('Flood exposure', 'nwParentCover');
+  const base = makeSelect('Basemap', 'nwParentBase');
+
+  const opacityWrap = document.createElement('label');
+  opacityWrap.append(document.createTextNode('Opacity'));
+
+  const opacity = document.createElement('input');
+  opacity.type = 'range';
+  opacity.min = '0';
+  opacity.max = '100';
+  opacity.step = '5';
+  opacity.value = '75';
+
+  const opacityText = document.createElement('output');
+  opacityText.textContent = '75%';
+
+  opacityWrap.append(opacity, opacityText);
+  extra.append(opacityWrap);
+  toolbar.append(extra);
+
+  let currentFrame = null;
+  let child = null;
+  let ready = false;
+
+  const remembered = {
+    cover: null,
+    base: null,
+    opacity: '75'
+  };
+
+  function childControl(id) {
+    try {
+      return child?.getElementById(id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function forward(id, value, eventName) {
+    const el = childControl(id);
+    if (!el) return;
+    el.value = value;
+    el.dispatchEvent(new Event(eventName, {
+      bubbles: true
+    }));
+  }
+
+  cover.addEventListener('change', function() {
+    remembered.cover = cover.value;
+    forward('cover', cover.value, 'change');
+  });
+
+  base.addEventListener('change', function() {
+    remembered.base = base.value;
+    forward('base', base.value, 'change');
+  });
+
+  opacity.addEventListener('input', function() {
+    remembered.opacity = opacity.value;
+    opacityText.textContent = opacity.value + '%';
+    forward('opacity', opacity.value, 'input');
+  });
+
+  function setupFrame(frame) {
+    if (!frame) return;
+
+    let doc;
+    try {
+      doc = frame.contentDocument;
+    } catch (_) {
+      return;
+    }
+
+    if (!doc || !doc.getElementById('cover') ||
+        !doc.getElementById('base')) return;
+
+    child = doc;
+
+    // Hide the iframe's duplicate toolbar and let
+    // the Sandy map fill the entire iframe.
+    if (!doc.getElementById('nwHideInnerStormToolbar')) {
+      const style = doc.createElement('style');
+      style.id = 'nwHideInnerStormToolbar';
+      style.textContent = `
+        #nwStormToolbar, .nw-sandy-toolbar {
+          display:none !important;
+        }
+        body #map {
+          top:0 !important;
+          bottom:0 !important;
+          height:100% !important;
+        }
+        body .panel {
+          top:15px !important;
+          max-height:calc(100% - 30px) !important;
+        }
+      `;
+      doc.head.append(style);
+    }
+
+    function syncOptions(parent, id, rememberedValue) {
+      const source = doc.getElementById(id);
+      parent.replaceChildren();
+
+      for (const option of source.options) {
+        parent.add(new Option(
+          option.textContent, option.value
+        ));
+      }
+
+      const valid = Array.from(parent.options)
+        .some(o => o.value === rememberedValue);
+
+      parent.value = valid ? rememberedValue : source.value;
+
+      if (parent.value !== source.value) {
+        forward(id, parent.value, 'change');
+      }
+      return parent.value;
+    }
+
+    remembered.cover = syncOptions(
+      cover, 'cover', remembered.cover
+    );
+    remembered.base = syncOptions(
+      base, 'base', remembered.base
+    );
+
+    forward('opacity', remembered.opacity, 'input');
+    opacity.value = remembered.opacity;
+    opacityText.textContent = opacity.value + '%';
+
+    ready = true;
+
+    try {
+      if (frame.contentWindow.map?.invalidateSize) {
+        frame.contentWindow.map.invalidateSize({
+          animate:false, pan:false
+        });
+      }
+    } catch (_) {}
+  }
+
+  function attachFrame() {
+    const frame = section.querySelector('iframe');
+    if (!frame) return;
+
+    if (frame !== currentFrame) {
+      currentFrame = frame;
+      frame.addEventListener('load', () => {
+        ready = false;
+        setupFrame(frame);
+      });
+    }
+
+    if (!ready) setupFrame(frame);
+  }
+
+  // The existing Storm code may recreate the iframe.
+  // Watch for replacements without changing its logic.
+  const observer = new MutationObserver(attachFrame);
+  observer.observe(
+    document.getElementById('stormDisplay') || section,
+    {childList:true, subtree:true}
+  );
+
+  attachFrame();
+})();
+</script>
+
+</body></html>
