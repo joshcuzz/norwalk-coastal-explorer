@@ -53,7 +53,7 @@ window.fetch=(input,opts)=>{
 })();
 </script>
 </head><body><header><h1>Norwalk Coastal Flood Explorer</h1><p>Research simulations · 2024 tides with 2024, 2050, and 2100 relative sea levels</p></header><nav><button class="active" data-tab="tidal">Tidal Flooding</button><button data-tab="storms">Storm Flooding</button><button data-tab="future">Future Sea Level</button><button data-tab="about">About</button></nav>
-<section id="tidal" class="tab active"><div class="toolbar"><label>Sea-level scenario <select id="tidalScenario"><option>2024</option><option>2050</option><option>2100</option></select></label><label>Map display <select id="tidalMode"><option value="all" selected>All modeled tidal flooding</option><option value="developed">Developed-classified land only</option></select></label><label style="display:inline-flex;align-items:center;gap:8px">Opacity <input id="tidalOpacity" type="range" min="0" max="100" value="85" step="5" style="width:115px;cursor:pointer"><span id="tidalOpacityValue" style="min-width:38px">85%</span></label></div><div id="tidalMap" class="mainmap"></div><div id="tidalLegend" class="legend"></div></section>
+<section id="tidal" class="tab active"><div class="toolbar"><label>Sea-level scenario <select id="tidalYear"><option value="2024">2024</option><option value="2050">2050</option><option value="2100">2100</option></select><select id="tidalScenario" style="display:none"><option>2024</option><option value="2024-access">2024 - Access-constrained (experimental)</option><option>2050</option><option value="2050-access">2050 - Access-constrained (experimental)</option><option>2100</option><option value="2100-access">2100 - Access-constrained (experimental)</option></select></label><label>Map display <select id="tidalMode"><option value="all" selected>All modeled tidal flooding</option><option value="developed">Developed-classified land only</option></select></label><label>Drainage assumption <select id="tidalDrainage"><option value="effective" selected>Effective drainage</option><option value="retained">No additional drainage</option></select></label><label style="display:inline-flex;align-items:center;gap:8px">Opacity <input id="tidalOpacity" type="range" min="0" max="100" value="85" step="5" style="width:115px;cursor:pointer"><span id="tidalOpacityValue" style="min-width:38px">85%</span></label></div><div id="tidalMap" class="mainmap"></div><div id="tidalLegend" class="legend"></div></section>
 <section id="storms" class="tab"><p style="padding:9px 16px"><a href="storm_100yr.html" target="_blank" rel="noopener">View synthetic 100-year baseline inundation map (provisional)</a></p><div class="toolbar"><label>Event <select id="event"><option value="sandy">Hurricane Sandy (2012)</option><option value="10">1-in-10-year coastal flood (not simulated)</option><option value="100">1-in-100-year coastal flood (not simulated)</option></select></label><label>Sea-level case <select id="stormScenario">
 <option value="Historical">Historical Sandy (2012)</option>
 <option value="2050">2050</option>
@@ -343,7 +343,7 @@ async function readOriginal(map,ev,scenario){
     else if(data.status==='nodata')body='No modeled value at this location.';
     else {
       let val=data.value;
-      const diff=scenario.includes('-');
+      const diff=(scenario==='2050-2024'||scenario==='2100-2024');
       body='<strong>'+ (diff?(val>0?'+':'')+val+' additional flood days':val+' flood days per year')+'</strong>'+
            '<div>'+scenario.replace('-',' minus ')+' sea-level comparison · 2024 tides</div>'+
            '<small>Exact original 2 m GeoTIFF cell (row '+data.row+', column '+data.col+')</small>';
@@ -717,6 +717,58 @@ document.getElementById('nwMhhwOpacity').addEventListener('input', function() {
   );
 
   attachFrame();
+})();
+</script>
+
+
+<script id="norwalk-drainage-controls-v1">
+(function () {
+  const year = document.getElementById('tidalYear');
+  const drainage = document.getElementById('tidalDrainage');
+  const original = document.getElementById('tidalScenario');
+
+  if (!year || !drainage || !original) {
+    console.error('Drainage controls missing');
+    return;
+  }
+
+  const validYears = ['2024', '2050', '2100'];
+
+  function updateDrainageMap() {
+    const y = year.value;
+
+    if (!validYears.includes(y)) return;
+
+    const scenario = drainage.value === 'effective'
+      ? y + '-access'
+      : y;
+
+    const option = Array.from(original.options)
+      .find(o => o.value === scenario);
+
+    if (!option) {
+      console.error('Missing map scenario:', scenario);
+      return;
+    }
+
+    original.value = scenario;
+
+    // Trigger the existing Leaflet layer update.
+    // Existing click-to-query also reads this value.
+    original.dispatchEvent(new Event('change', {
+      bubbles: true
+    }));
+  }
+
+  year.addEventListener('change', updateDrainageMap);
+  drainage.addEventListener('change', updateDrainageMap);
+
+  // Default: 2024 with effective drainage.
+  year.value = '2024';
+  drainage.value = 'effective';
+  updateDrainageMap();
+
+  console.log('Norwalk drainage controls initialized');
 })();
 </script>
 
