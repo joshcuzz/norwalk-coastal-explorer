@@ -61,7 +61,54 @@ window.fetch=(input,opts)=>{
 <option value="2100">2100</option>
 </select></label></div><div id="stormDisplay"><iframe class="embed" data-src="sandy_v3_maxdepth_inspect_domain.html" title="Historical Sandy flood depth"></iframe></div></section>
 <section id="future" class="tab"><div class="toolbar"><label>Additional flood days vs 2024 <select id="futureScenario"><option value="2050-2024">2050 minus 2024</option><option value="2100-2024">2100 minus 2024</option></select></label><label>Display <select id="futureMode"><option value="all">All modeled locations</option><option value="developed">Developed-classified land only</option></select></label><label style="display:inline-flex;align-items:center;gap:8px">Opacity <input id="futureOpacity" type="range" min="0" max="100" value="85" step="5" style="width:115px;cursor:pointer"><span id="futureOpacityValue" style="min-width:38px">85%</span></label></div><div id="futureMap" class="mainmap"></div><div class="legend">Negative change · purple &nbsp; | &nbsp; +1–5 days · cyan &nbsp; | &nbsp; +6–20 · blue &nbsp; | &nbsp; +21–60 · violet &nbsp; | &nbsp; +61–150 · magenta &nbsp; | &nbsp; +151+ · red</div></section>
-<section id="about" class="tab"><div class="content"><h2>What these maps show</h2><p>The annual tidal maps depict the number of UTC calendar days during which a 2 m terrain pixel exceeds 5 cm modeled water depth, conditioned on the corresponding 20 m SFINCS cell being hydraulically wet. A day counts if at least one hourly snapshot meets that threshold.</p><p>The 2050 and 2100 experiments apply JPL relative sea-level increments of +0.197504 m and +0.643954 m to the same 2024 tidal forcing. Geometry and 2021 C-CAP land-cover classification are held fixed. These are controlled sea-level sensitivity experiments, not predictions of future weather or storm frequency.</p><p>The flood-day difference maps subtract the 2024 annual counts from the future-scenario counts. Negative differences, if present, are shown separately. The 348-day display exclusion is a visualization filter, not a hydrodynamic correction; retained water and connectivity require further QA.</p><p>The map uses 10 m approximate-resolution image previews for web performance. Scientific analysis uses the accompanying full-resolution 2 m GeoTIFFs. Map click values are sampled from the original 2 m scientific raster; preview positioning on a web tile basemap is approximate; use the original geo-referenced TIFFs for accurate location-by-location scientific analysis.</p><p><strong>Storm flooding:</strong> Historical Sandy replay is available where the existing map is installed. The 1-in-10-year and 1-in-100-year events and future Sandy replays have not been simulated. They require separately justified extreme-water-level/tide/storm forcing and event simulations. A 100-year return period applies to a specified baseline distribution, not automatically to its sea-level-shifted future counterpart.</p><p>Methods: SFINCS 20 m hydraulics; original 2 m topobathymetry; C-CAP classes 2/3/4 considered developed. The regional sea-level forcing and model assumptions should be documented in a full technical methods note before public release.</p><p><strong>Future Sea Level:</strong> Ocean-connected below-mean-water inundation is estimated from fixed 2 m terrain using an explicitly specified 2024 MHHW elevation in NAVD88. This static calculation does not simulate tides, drainage, defenses, waves, or geomorphic evolution. Sea-level offsets are from JPL RCP8.5 member 01, not an ensemble mean. The shoreline position is indicative, not a forecast.</p><div class="stat" id="stats"></div></div>
+<section id="about" class="tab"><div class="content"><h2>What these maps show</h2>
+<p>
+The tidal flooding maps show the estimated number of days per year
+with coastal inundation under three relative sea-level scenarios:
+2024, 2050, and 2100. All scenarios use the same 2024 tidal
+forcing, allowing the effect of rising sea level to be compared.
+A flooded day is defined using a minimum water-depth threshold
+of 5 cm, with scenario-specific treatment of drainage.
+</p>
+
+<h3>Drainage assumptions</h3>
+
+<p>
+<strong>Effective drainage (experimental):</strong>
+Assumes that floodwater can drain as tides recede rather than
+remaining indefinitely trapped in low-lying areas. This experimental
+method estimates flooding frequency using nearby tidally responsive
+SFINCS water levels and terrain-based coastal access elevations.
+The correction is applied to selected developed-land pixels where
+coastal access is elevated above local ground. Elsewhere, the
+existing reconstructed values are retained.
+</p>
+
+<p>
+<strong>No additional drainage:</strong>
+Uses the existing SFINCS-based flood-frequency reconstruction
+without the additional coastal-access correction.
+Although SFINCS represents overland water movement, water can
+remain trapped in depressions after coastal water levels recede,
+potentially overstating the number of flooded days.
+</p>
+
+<p>
+<strong>Important limitations:</strong>
+Neither drainage assumption explicitly simulates municipal
+stormwater infrastructure, including underground pipes,
+culverts, pumps, or their capacities. The effective-drainage
+method is an idealized sensitivity experiment and has not
+been independently validated at individual properties.
+Flood-frequency estimates may be affected by terrain resolution,
+coastal barriers, connectivity, and residual model artifacts.
+</p>
+
+<p>
+These maps are intended for research and exploration.
+They should not be used for engineering design, emergency
+response, or property-level flood-risk determinations.
+</p><p>The 2050 and 2100 experiments apply JPL relative sea-level increments of +0.197504 m and +0.643954 m to the same 2024 tidal forcing. Geometry and 2021 C-CAP land-cover classification are held fixed. These are controlled sea-level sensitivity experiments, not predictions of future weather or storm frequency.</p><p>The flood-day difference maps subtract the 2024 annual counts from the future-scenario counts. Negative differences, if present, are shown separately. Retained water and coastal connectivity remain sources of uncertainty requiring further validation.</p><p>The map uses 10 m approximate-resolution image previews for web performance. Scientific analysis uses the accompanying full-resolution 2 m GeoTIFFs. Map click values are sampled from the original 2 m scientific raster; preview positioning on a web tile basemap is approximate; use the original geo-referenced TIFFs for accurate location-by-location scientific analysis.</p><p><strong>Storm flooding:</strong> Historical Sandy replay is available where the existing map is installed. The 1-in-10-year and 1-in-100-year events and future Sandy replays have not been simulated. They require separately justified extreme-water-level/tide/storm forcing and event simulations. A 100-year return period applies to a specified baseline distribution, not automatically to its sea-level-shifted future counterpart.</p><p>Methods: SFINCS 20 m hydraulics; original 2 m topobathymetry; C-CAP classes 2/3/4/5 considered developed. The regional sea-level forcing and model assumptions should be documented in a full technical methods note before public release.</p><p><strong>Future Sea Level:</strong> Ocean-connected below-mean-water inundation is estimated from fixed 2 m terrain using an explicitly specified 2024 MHHW elevation in NAVD88. This static calculation does not simulate tides, drainage, defenses, waves, or geomorphic evolution. Sea-level offsets are from JPL RCP8.5 member 01, not an ensemble mean. The shoreline position is indicative, not a forecast.</p><div class="stat" id="stats"></div></div>
 <h3>Reconstructed tidal inundation frequency</h3>
 
 <p>
